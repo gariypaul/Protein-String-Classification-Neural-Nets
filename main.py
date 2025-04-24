@@ -100,12 +100,27 @@ def execute_exp(args: argparse.ArgumentParser = None):
     ################################################################################
     # DATASET LOADING                                                              #
     ################################################################################
-    data_dict = load_rotation(basedir=args.dataset, rotation=args.rotation, version="B")
-    if data_dict is None:
-        print(f"Data path {args.dataset} does not exist. Exiting.")
+    data_frames = load_pfam_dataset(
+        basedir=args.dataset,
+        rotation=args.rotation,
+        nfolds=5,  # Assuming 5 folds as per the loader's default
+        ntrain_folds=3,  # Assuming 3 training folds as per the loader's default
+        version="B"  # Assuming version "B" as in your original load_rotation call
+    )
+    if data_frames is None:
+        print(f"Error loading dataset from {args.dataset}. Exiting.")
         return
 
-    # Convert to 3TF DataSets
+    # Prepare the data dictionary in the format expected by create_tf_datasets
+    data_dict = {
+        'ins_train': data_frames['train']['string'].values,
+        'outs_train': data_frames['train']['label'].values,
+        'ins_valid': data_frames['valid']['string'].values,
+        'outs_valid': data_frames['valid']['label'].values,
+        'ins_test': data_frames['test']['string'].values,
+        'outs_test': data_frames['test']['label'].values,
+    }
+
     dataset_train, dataset_valid, dataset_test = create_tf_datasets(
         dat=data_dict,
         batch=args.batch_size,
@@ -119,12 +134,6 @@ def execute_exp(args: argparse.ArgumentParser = None):
     len_max = data_dict["len_max"]
     n_tokens = data_dict["n_tokens"]
     n_classes = data_dict["n_classes"]
-    out_index_word = data_dict[
-        "out_index_word"
-    ]  # dictionary containing index -> class name map
-    out_word_index = data_dict[
-        "out_word_index"
-    ]  # dictionary containing class name -> index map
 
     #################################################################################
     # Build the model                                                               #
